@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Droguería POS - Gestión Integral</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="auth-container" class="auth-wrapper">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h2><i class="fa-solid fa-store"></i> Droguería POS</h2>
+                <p>Ingrese al sistema para gestionar ventas, productos y caja</p>
+            </div>
+            <div class="auth-tabs">
+                <button id="tab-login" class="auth-tab active" type="button">Iniciar Sesión</button>
+                <button id="tab-register" class="auth-tab" type="button">Registrarse</button>
+            </div>
+            <div id="auth-message"></div>
+            <form id="auth-form">
+                <div id="group-nombre" class="form-group" style="display: none;">
+                    <label for="nombre">Nombre Completo</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-id-card"></i>
+                        <input type="text" id="nombre" placeholder="Ej: Juan Pérez">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="username">Nombre de Usuario</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="username" required placeholder="Ingrese su usuario">
+                    </div>
+                </div>
+                <div id="group-email" class="form-group" style="display: none;">
+                    <label for="email">Correo Electrónico</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-envelope"></i>
+                        <input type="email" id="email" placeholder="correo@ejemplo.com">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <div class="input-with-icon">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="password" required placeholder="••••••••">
+                        <i class="fa-solid fa-eye toggle-password" onclick="togglePasswordVisibility('password', this)"></i>
+                    </div>
+                </div>
+                <div class="form-actions-forgot">
+                    <a href="#" onclick="abrirModal('modal-forgot')">¿Olvidaste tu contraseña?</a>
+                </div>
+                <button type="submit" id="btn-auth-submit" class="btn-primary-block">
+                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- APLICACIÓN PRINCIPAL -->
+    <div id="app-container" class="app-layout" style="display: none;">
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-shop"></i>
+                <span>Droguería POS</span>
+            </div>
+            <nav class="sidebar-nav">
+                <button type="button" class="nav-btn active" onclick="cambiarVista('pos', this)">
+                    <i class="fa-solid fa-cash-register"></i> Punto de Venta
+                </button>
+                <button type="button" class="nav-btn" onclick="cambiarVista('inventario', this)">
+                    <i class="fa-solid fa-boxes-stacked"></i> Inventario
+                </button>
+                <button type="button" class="nav-btn" onclick="cambiarVista('caja', this)">
+                    <i class="fa-solid fa-vault"></i> Flujo de Caja
+                </button>
+                <button type="button" class="nav-btn" onclick="cambiarVista('reportes', this)">
+                    <i class="fa-solid fa-file-excel"></i> Reportes y Excel
+                </button>
+                <button type="button" class="nav-btn" onclick="cambiarVista('usuarios', this)">
+                    <i class="fa-solid fa-users-gear"></i> Usuarios
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <strong id="user-display-name">Usuario</strong>
+                    <span id="user-display-role" class="badge">Rol</span>
+                </div>
+                <button type="button" onclick="logout()" class="btn-logout" title="Cerrar Sesión">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+
+            <!-- ==================== 1. PUNTO DE VENTA ==================== -->
+            <section id="view-pos" class="view-section">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fa-solid fa-cart-shopping"></i> Punto de Venta</h2>
+                        <p class="sub-text">Haga clic en un producto para agregarlo. En el ticket puede editar cantidad y precio.</p>
+                    </div>
+                </div>
+
+                <div class="pos-layout-grid">
+                    <!-- Catálogo -->
+                    <div class="panel-card">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="pos-search" onkeyup="filtrarCatalogoPOS()" placeholder="Buscar producto por nombre, descripción, tipo o código...">
+                        </div>
+                        <div id="pos-catalogo-grid" class="pos-products-grid"></div>
+                    </div>
+
+                    <!-- Ticket Editable -->
+                    <div class="panel-card panel-blue-top">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:0.75rem; margin-bottom:0.75rem;">
+                            <h3 class="card-title" style="margin:0;"><i class="fa-solid fa-receipt"></i> Ticket de Venta</h3>
+                            <span id="ticket-fecha-hora" style="font-size:0.78rem; color:#64748b;"></span>
+                        </div>
+
+                        <div style="background:#f8fafc; padding:0.6rem 0.85rem; border-radius:8px; margin-bottom:0.85rem; font-size:0.83rem; color:#334155; display:flex; justify-content:space-between;">
+                            <span><strong>Atiende:</strong> <span id="ticket-cajero-nombre">Administrador</span></span>
+                            <span><strong>Unidades:</strong> <span id="ticket-total-items">0</span></span>
+                        </div>
+
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Producto / Tipo</th>
+                                        <th style="width:65px;">Cant.</th>
+                                        <th style="width:90px;">Precio ($)</th>
+                                        <th>Subtotal</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pos-carrito-tbody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="pos-checkout-box">
+                            <div class="pos-total-line">
+                                <span>TOTAL A PAGAR:</span>
+                                <span id="pos-total-pagar">$0</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Método de Pago</label>
+                                <select id="pos-metodo-pago" class="form-control"></select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Efectivo Recibido (Opcional)</label>
+                                <input type="number" id="pos-recibido" class="form-control" onkeyup="calcularCambioPOS()" placeholder="0">
+                                <small id="pos-cambio-texto" class="cambio-label"></small>
+                            </div>
+
+                            <div style="display:flex; gap:0.5rem;">
+                                <button type="button" onclick="vaciarCarritoPOS()" class="btn-secondary" style="width:35%;">Limpiar</button>
+                                <button type="button" onclick="confirmarVentaPOS()" class="btn-primary-block" style="width:65%;">
+                                    <i class="fa-solid fa-check-circle"></i> Emitir Venta
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== 2. INVENTARIO ==================== -->
+            <section id="view-inventario" class="view-section" style="display: none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fa-solid fa-boxes-stacked"></i> Inventario de Productos</h2>
+                        <p class="sub-text">Haga clic sobre cualquier celda para editar directamente la base de datos.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button type="button" class="btn-secondary" onclick="abrirModalCategorias()">
+                            <i class="fa-solid fa-tags"></i> Tipos / Categorías
+                        </button>
+                        <button type="button" class="btn-primary" onclick="agregarFilaRapidaInventario()">
+                            <i class="fa-solid fa-plus"></i> Nuevo Producto
+                        </button>
+                    </div>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card"><span>Total Productos</span><h3 id="kpi-inv-total">0</h3></div>
+                    <div class="kpi-card"><span>Valor Inventario</span><h3 id="kpi-inv-valor" class="txt-blue">$0</h3></div>
+                    <div class="kpi-card"><span>Stock Crítico</span><h3 id="kpi-inv-stock" class="txt-red">0</h3></div>
+                    <div class="kpi-card"><span>Próx. Vencer (60d)</span><h3 id="kpi-inv-venc" class="txt-amber">0</h3></div>
+                </div>
+
+                <div class="filter-bar">
+                    <input type="text" id="inv-search" class="form-control" onkeyup="filtrarInventario()" placeholder="🔍 Buscar producto por nombre, descripción, lote o código...">
+                    <select id="inv-filter-estado" class="form-control" onchange="filtrarInventario()" style="max-width: 240px;">
+                        <option value="TODOS">Todos los productos</option>
+                        <option value="BAJO">⚠️ Stock Bajo / Agotado</option>
+                        <option value="VENCIMIENTO">⏳ Vencidos / Próx. a Vencer</option>
+                    </select>
+                </div>
+
+                <div class="table-container" style="overflow-x:auto;">
+                    <table class="data-table editable-grid">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre del Producto</th>
+                                <th>Descripción / Detalle</th>
+                                <th>Tipo / Categoría</th>
+                                <th>Lote</th>
+                                <th>Vencimiento</th>
+                                <th>P. Compra ($)</th>
+                                <th>P. Venta ($)</th>
+                                <th>Stock</th>
+                                <th>Mín.</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventario-tbody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==================== 3. FLUJO DE CAJA ==================== -->
+            <section id="view-caja" class="view-section" style="display: none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fa-solid fa-vault"></i> Control de Caja</h2>
+                        <p class="sub-text">Las ventas del Punto de Venta entran automáticamente aquí. Use este panel solo para base inicial, gastos o cierre.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button type="button" class="btn-secondary" onclick="abrirModalMetodosPago()">
+                            <i class="fa-solid fa-credit-card"></i> Métodos de Pago
+                        </button>
+                        <span id="caja-badge-estado" class="status-pill pill-closed">SIN APERTURA</span>
+                    </div>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card"><span>Base Inicial</span><h3 id="kpi-caja-apertura">$0</h3></div>
+                    <div class="kpi-card"><span>Entradas (Ventas + Ing.)</span><h3 id="kpi-caja-ingresos" class="txt-green">$0</h3></div>
+                    <div class="kpi-card"><span>Salidas / Gastos</span><h3 id="kpi-caja-egresos" class="txt-red">$0</h3></div>
+                    <div class="kpi-card kpi-blue-border"><span>Saldo en Caja</span><h3 id="kpi-caja-saldo" class="txt-blue">$0</h3></div>
+                </div>
+
+                <div id="caja-desglose-metodos" class="chips-row"></div>
+
+                <!-- Barra simplificada sin redundancias -->
+                <form id="form-caja-mov" class="panel-card" style="display:grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr auto; gap:0.85rem; align-items:end; margin-bottom:1.25rem;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Operación</label>
+                        <select id="caja-tipo" class="form-control" onchange="actualizarFormularioCaja()" required>
+                            <option value="APERTURA">🟢 Base Inicial (Abrir Caja)</option>
+                            <option value="EGRESO">🔴 Registrar Gasto / Salida</option>
+                            <option value="INGRESO">🔵 Ingreso Extra (No venta)</option>
+                            <option value="CIERRE">🔒 Cierre y Arqueo de Turno</option>
+                        </select>
+                    </div>
+
+                    <div id="grupo-caja-metodo" class="form-group" style="margin:0;">
+                        <label>Medio</label>
+                        <select id="caja-metodo-pago" class="form-control"></select>
+                    </div>
+
+                    <div class="form-group" style="margin:0;">
+                        <label id="lbl-caja-monto">Monto ($)</label>
+                        <input type="number" id="caja-monto" class="form-control" step="any" required placeholder="0">
+                    </div>
+
+                    <div class="form-group" style="margin:0;">
+                        <label>Concepto / Nota</label>
+                        <input type="text" id="caja-desc" class="form-control" placeholder="Ej: Base del turno, pago domicilio...">
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="height: 42px;">Registrar</button>
+                </form>
+
+                <div class="table-container" style="overflow-x:auto;">
+                    <table class="data-table editable-grid">
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Operación</th>
+                                <th>Medio</th>
+                                <th>Concepto (Editable)</th>
+                                <th>Usuario</th>
+                                <th>Monto $ (Editable)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="caja-movimientos-tbody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==================== 4. REPORTES Y EXCEL ==================== -->
+            <section id="view-reportes" class="view-section" style="display: none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fa-solid fa-chart-line"></i> Reportes Mensuales y Ventas</h2>
+                        <p class="sub-text">Consulte, edite o anule tickets emitidos y exporte el consolidado mensual a Excel.</p>
+                    </div>
+                    <div class="header-actions">
+                        <input type="month" id="rep-mes-excel" class="form-control" style="width:170px;">
+                        <button type="button" class="btn-primary" style="background:#059669;" onclick="exportarReporteMensualExcel()">
+                            <i class="fa-solid fa-file-excel"></i> Descargar Excel del Mes
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="cargarModuloReportes()">
+                            <i class="fa-solid fa-rotate"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pos-layout-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem;">
+                    <div class="table-container">
+                        <h3 class="table-title">Ventas por Usuario</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Nombre</th><th>Usuario</th><th>Tickets</th><th>Total Vendido</th></tr>
+                            </thead>
+                            <tbody id="rep-usuarios-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <h3 class="table-title">Estadística Mensual</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Mes</th><th>Ventas</th><th>Ingresos Totales</th></tr>
+                            </thead>
+                            <tbody id="rep-mensual-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-container" style="overflow-x:auto;">
+                    <h3 class="table-title">Historial de Tickets Emitidos (Editable)</h3>
+                    <table class="data-table editable-grid">
+                        <thead>
+                            <tr>
+                                <th># Ticket</th>
+                                <th>Fecha / Hora</th>
+                                <th>Productos Vendidos</th>
+                                <th>Cajero</th>
+                                <th>Método de Pago</th>
+                                <th>Total ($)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-recientes-tbody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ==================== 5. USUARIOS ==================== -->
+            <section id="view-usuarios" class="view-section" style="display: none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fa-solid fa-users"></i> Administración de Usuarios</h2>
+                        <p class="sub-text">Gestione los cajeros y administradores con acceso al sistema.</p>
+                    </div>
+                    <button type="button" class="btn-primary" onclick="abrirModal('modal-user')">
+                        <i class="fa-solid fa-user-plus"></i> Nuevo Usuario
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Usuario</th>
+                                <th>Correo</th>
+                                <th>Rol</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODALES -->
+    <div id="modal-forgot" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-key"></i> Recuperación de Acceso</h3>
+                <span class="close-modal" onclick="cerrarModal('modal-forgot')">&times;</span>
+            </div>
+            <form id="form-forgot-password">
+                <div class="form-group">
+                    <label for="forgot-email">Correo Electrónico</label>
+                    <input type="email" id="forgot-email" class="form-control" required placeholder="correo@ejemplo.com">
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Enviar Token</button>
+                    <button type="button" class="btn-secondary" onclick="cerrarModal('modal-forgot')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-reset-token" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-shield-halved"></i> Restablecer Contraseña</h3>
+                <span class="close-modal" onclick="cerrarModal('modal-reset-token')">&times;</span>
+            </div>
+            <form id="form-reset-token">
+                <div class="form-group">
+                    <label for="reset-token-input">Token de Recuperación</label>
+                    <input type="text" id="reset-token-input" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="reset-new-password">Nueva Contraseña</label>
+                    <input type="password" id="reset-new-password" class="form-control" required>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Cambiar Contraseña</button>
+                    <button type="button" class="btn-secondary" onclick="cerrarModal('modal-reset-token')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-user" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-plus"></i> Crear Nuevo Usuario</h3>
+                <span class="close-modal" onclick="cerrarModal('modal-user')">&times;</span>
+            </div>
+            <form id="form-create-user">
+                <div class="form-group"><label>Nombre Completo</label><input type="text" id="new-nombre" class="form-control" required></div>
+                <div class="form-group"><label>Nombre de Usuario</label><input type="text" id="new-username" class="form-control" required></div>
+                <div class="form-group"><label>Correo Electrónico</label><input type="email" id="new-email" class="form-control"></div>
+                <div class="form-group"><label>Contraseña</label><input type="password" id="new-password" class="form-control" required></div>
+                <div class="form-group">
+                    <label>Rol</label>
+                    <select id="new-rol" class="form-control" required>
+                        <option value="CAJERO">CAJERO</option>
+                        <option value="ADMIN">ADMINISTRADOR</option>
+                    </select>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Guardar Usuario</button>
+                    <button type="button" class="btn-secondary" onclick="cerrarModal('modal-user')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-categorias" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 460px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-tags"></i> Tipos y Categorías</h3>
+                <span class="close-modal" onclick="cerrarModal('modal-categorias')">&times;</span>
+            </div>
+            <form id="form-nueva-categoria" style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                <input type="text" id="input-nueva-categoria" class="form-control" placeholder="Ej: Medicamentos, Aseo, Bebidas..." required>
+                <button type="submit" class="btn-primary">Agregar</button>
+            </form>
+            <ul id="lista-categorias-ul" style="list-style:none; padding:0; max-height:260px; overflow-y:auto;"></ul>
+        </div>
+    </div>
+
+    <div id="modal-metodos-pago" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-credit-card"></i> Métodos de Pago</h3>
+                <span class="close-modal" onclick="cerrarModal('modal-metodos-pago')">&times;</span>
+            </div>
+            <form id="form-nuevo-metodo" style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:center;">
+                <input type="text" id="input-nuevo-metodo" class="form-control" placeholder="Ej: NEQUI, DAVIPLATA, CRÉDITO..." required>
+                <label style="font-size:0.8rem; white-space:nowrap;">
+                    <input type="checkbox" id="input-metodo-efectivo" checked> Efectivo
+                </label>
+                <button type="submit" class="btn-primary">Crear</button>
+            </form>
+            <div id="lista-metodos-div" style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/inventario-caja.js"></script>
+    <script src="js/pos-reportes.js"></script>
+</body>
+</html>
